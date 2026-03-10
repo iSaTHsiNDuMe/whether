@@ -30,6 +30,80 @@
       display: none;
     }
 
+    /* ── Feedback Panel ── */
+    .feedback-panel {
+      position: fixed;
+      top: 120px;
+      right: 20px;
+      width: 260px;
+      padding: 14px;
+      border: 1px solid #d9d9d9;
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      z-index: 20;
+    }
+
+    .feedback-panel h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .feedback-panel p {
+      margin: 6px 0 10px;
+      font-size: 14px;
+    }
+
+    .feedback-options {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .feedback-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    #feedbackNote {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #c9c9c9;
+      margin-bottom: 10px;
+      font: inherit;
+    }
+
+    #feedbackForm button {
+      width: 100%;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 12px;
+      background: #1b6ef3;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #feedbackStatus {
+      margin: 8px 0 0;
+      min-height: 18px;
+      font-size: 13px;
+      color: #2f5d0f;
+    }
+
+    @media (max-width: 900px) {
+      .feedback-panel {
+        position: static;
+        width: auto;
+        margin-top: 16px;
+      }
+    }
+
     /* ── Weather Card ── */
     .weather-card {
       max-width: 700px;
@@ -193,6 +267,26 @@
   <h3>Map</h3>
   <iframe id="mapFrame" title="Location map" loading="lazy"></iframe>
   <p><a id="mapLink" href="#" target="_blank" rel="noopener noreferrer">Open map in new tab</a></p>
+
+  <aside class="feedback-panel" aria-labelledby="feedbackTitle">
+    <h4 id="feedbackTitle">Quick Feedback</h4>
+    <form id="feedbackForm">
+      <p>Is this information correct?</p>
+      <div class="feedback-options">
+        <label>
+          <input type="radio" name="accuracy" value="correct" required />
+          Correct
+        </label>
+        <label>
+          <input type="radio" name="accuracy" value="wrong" />
+          Wrong
+        </label>
+      </div>
+      <input id="feedbackNote" name="note" type="text" placeholder="Optional comment" />
+      <button type="submit">Send Feedback</button>
+      <p id="feedbackStatus" aria-live="polite"></p>
+    </form>
+  </aside>
 
   <script>
     let savedLocations = [];
@@ -431,7 +525,53 @@
       );
     }
 
+    async function submitFeedback(event) {
+      event.preventDefault();
+
+      const statusEl = document.getElementById("feedbackStatus");
+      const formEl = document.getElementById("feedbackForm");
+      const formData = new FormData(formEl);
+
+      const payload = {
+        accuracy: formData.get("accuracy"),
+        note: (formData.get("note") || "").toString().trim(),
+        page: "location-saver",
+        timestamp: new Date().toISOString()
+      };
+
+      if (!payload.accuracy) {
+        statusEl.textContent = "Please choose Correct or Wrong.";
+        return;
+      }
+
+      statusEl.textContent = "Submitting feedback...";
+
+      try {
+        const res = await fetch("/api/feedback", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          throw new Error("Feedback endpoint unavailable");
+        }
+
+        statusEl.textContent = "Thanks, feedback received.";
+        formEl.reset();
+      } catch (error) {
+        console.error(error);
+        localStorage.setItem("lastFeedback", JSON.stringify(payload));
+        statusEl.textContent = "Saved locally. Backend feedback endpoint not available.";
+        formEl.reset();
+      }
+    }
+
     window.addEventListener("DOMContentLoaded", async () => {
+      document.getElementById("feedbackForm").addEventListener("submit", submitFeedback);
+
       await loadSavedLocations();
 
       if (savedLocations.length) {
