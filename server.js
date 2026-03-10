@@ -1,27 +1,14 @@
+require('dotenv').config();
 const express = require("express");
-const fs = require("fs/promises");
-const path = require("path");
+const { getLocations, saveLocationEntry } = require("./api/_storage");
 
 const app = express();
 const port = 3000;
-const locationsFile = path.join(__dirname, "locations.json");
 const openWeatherApiKey = process.env.OPENWEATHER_API_KEY;
 
 app.use(express.json());
 app.use(express.static(__dirname));
 
-async function readLocations() {
-  try {
-    const content = await fs.readFile(locationsFile, "utf-8");
-    const parsed = JSON.parse(content);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return [];
-    }
-    throw error;
-  }
-}
 
 app.post(["/save-location", "/api/save-location"], async (req, res) => {
   try {
@@ -41,12 +28,8 @@ app.post(["/save-location", "/api/save-location"], async (req, res) => {
       weather: weather || null
     };
 
-    const locations = await readLocations();
-    locations.push(entry);
-
-    await fs.writeFile(locationsFile, JSON.stringify(locations, null, 2), "utf-8");
-
-    return res.status(201).json({ message: "Location saved.", data: entry, all: locations });
+    const all = await saveLocationEntry(entry);
+    return res.status(201).json({ message: "Location saved.", data: entry, all });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Failed to save location." });
@@ -55,7 +38,7 @@ app.post(["/save-location", "/api/save-location"], async (req, res) => {
 
 app.get(["/locations", "/api/locations"], async (req, res) => {
   try {
-    const locations = await readLocations();
+    const locations = await getLocations();
     return res.json(locations);
   } catch (error) {
     console.error(error);

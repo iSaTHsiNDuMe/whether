@@ -1,77 +1,42 @@
-let memoryLocations = [];
+const { createClient } = require('@supabase/supabase-js');
 
-async function readFromVercelKv() {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-  if (!url || !token) {
-    return null;
-  }
+const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
-  const response = await fetch(`${url}/get/locations`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to read from Vercel KV.");
-  }
-
-  const data = await response.json();
-
-  if (!data.result) {
-    return [];
-  }
-
-  const parsed = JSON.parse(data.result);
-  return Array.isArray(parsed) ? parsed : [];
-}
-
-async function writeToVercelKv(locations) {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-
-  if (!url || !token) {
-    return false;
-  }
-
-  const response = await fetch(`${url}/set/locations/${encodeURIComponent(JSON.stringify(locations))}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to write to Vercel KV.");
-  }
-
-  return true;
-}
+const TABLE = 'locations';
 
 async function getLocations() {
-  const kvLocations = await readFromVercelKv();
-
-  if (kvLocations !== null) {
-    return kvLocations;
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('*')
+    .order('timestamp', { ascending: true });
+  if (error) {
+    console.error('Supabase getLocations error:', error);
+    return [];
   }
-
-  return memoryLocations;
+  return data || [];
 }
 
 async function saveLocationEntry(entry) {
-  const current = await getLocations();
-  const updated = [...current, entry];
-  const savedToKv = await writeToVercelKv(updated);
-
-  if (!savedToKv) {
-    memoryLocations = updated;
+  if (!supabase) return [];
+  const { error } = await supabase
+    .from(TABLE)
+    .insert([entry]);
+  if (error) {
+    console.error('Supabase saveLocationEntry error:', error);
   }
-
-  return updated;
+  return await getLocations();
 }
+
+module.exports = {
+  getLocations,
+  saveLocationEntry
+};
 
 module.exports = {
   getLocations,

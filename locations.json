@@ -1,3 +1,53 @@
 [
-
+  {
+    "tag": "auto-2026-03-10T09:45:44.020Z",
+    "latitude": 6.8653194989245065,
+    "longitude": 79.85974779443637,
+    "ip": "220.247.252.34",
+    "place": "Informatics Institute of Technology, 57, Ramakrishna Road, Wellawatte, Colombo, Colombo District, Western Province, 00600, Sri Lanka",
+    "timestamp": "2026-03-10T09:45:45.285Z",
+    "weather": {
+      "weather_code": 1,
+      "description": "Weather from Open-Meteo",
+      "temperature_c": 28.4,
+      "humidity_percent": 75,
+      "wind_kmh": 20.3,
+      "observed_at": "2026-03-10T15:15",
+      "provider": "Open-Meteo"
+    }
+  },
+  {
+    "tag": "auto-2026-03-10T09:48:20.895Z",
+    "latitude": 6.8653194989245065,
+    "longitude": 79.85974779443637,
+    "ip": "220.247.252.34",
+    "place": "Informatics Institute of Technology, 57, Ramakrishna Road, Wellawatte, Colombo, Colombo District, Western Province, 00600, Sri Lanka",
+    "timestamp": "2026-03-10T09:48:22.202Z",
+    "weather": {
+      "weather_code": 1,
+      "description": "Weather from Open-Meteo",
+      "temperature_c": 28.4,
+      "humidity_percent": 75,
+      "wind_kmh": 20.3,
+      "observed_at": "2026-03-10T15:15",
+      "provider": "Open-Meteo"
+    }
+  },
+  {
+    "tag": "auto-2026-03-10T09:48:23.556Z",
+    "latitude": 6.8653194989245065,
+    "longitude": 79.85974779443637,
+    "ip": "220.247.252.34",
+    "place": "Informatics Institute of Technology, 57, Ramakrishna Road, Wellawatte, Colombo, Colombo District, Western Province, 00600, Sri Lanka",
+    "timestamp": "2026-03-10T09:48:24.186Z",
+    "weather": {
+      "weather_code": 1,
+      "description": "Weather from Open-Meteo",
+      "temperature_c": 28.4,
+      "humidity_percent": 75,
+      "wind_kmh": 20.3,
+      "observed_at": "2026-03-10T15:15",
+      "provider": "Open-Meteo"
+    }
+  }
 ]
