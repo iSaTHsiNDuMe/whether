@@ -16,8 +16,7 @@ async function getLocations() {
     .select('*')
     .order('timestamp', { ascending: true });
   if (error) {
-    console.error('Supabase getLocations error:', error);
-    return [];
+    throw new Error(`Supabase getLocations error: ${error.message}`);
   }
   return data || [];
 }
@@ -28,15 +27,10 @@ async function saveLocationEntry(entry) {
     .from(TABLE)
     .insert([entry]);
   if (error) {
-    console.error('Supabase saveLocationEntry error:', error);
+    throw new Error(`Supabase saveLocationEntry error: ${error.message}`);
   }
   return await getLocations();
 }
-
-module.exports = {
-  getLocations,
-  saveLocationEntry
-};
 
 module.exports = {
   getLocations,
